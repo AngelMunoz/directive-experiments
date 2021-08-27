@@ -1,5 +1,5 @@
 import haunted, { useState, BaseScheduler, GenericRenderer } from 'haunted';
-import { html, render, TemplateResult } from 'lit-html';
+import { html, noChange, render, TemplateResult } from 'lit-html';
 import { directive, ChildPart, PartInfo, Part, DirectiveParameters, PartType } from 'lit-html/directive';
 import { AsyncDirective } from 'lit-html/async-directive';
 
@@ -65,20 +65,24 @@ function virtual(renderer: GenericRenderer) {
             }
         }
         update(part: Part, ...args: DirectiveParameters<this>[]) {
+            // something weird is going on here
+            // each time the parent updates it kills the virtual component
+            // so when we try to get the scheduler we get undefined and 
+            // register a new one killing the old result
             let cont = partToScheduler.get(this);
             if (!cont) {
                 cont = new Scheduler(renderer, this);
                 partToScheduler.set(this, cont);
                 schedulerToPart.set(cont, this);
-                // something weird is going on here
-                // each time the parent updates it kills the virtual component
                 teardownOnRemove(cont, part as ChildPart);
             }
             cont.args = args;
             cont.update();
         }
-        render(...props: unknown[]): unknown {
-            return renderer(...props);
+        render(...props: unknown[]) {
+            // the render should be handled by update
+            // because the scheduler should take care of the state updates
+            return noChange;
         }
 
     }
@@ -86,17 +90,14 @@ function virtual(renderer: GenericRenderer) {
 }
 
 
-const virtuallyRenderable = virtual(function lol(name, age) {
+const virtuallyRenderable = virtual(function lol(name, age, externalCount) {
     const [state, setState] = useState(0);
     return html`
-    <div>
-    <h1>${name}</h1>
-    <h2>${age}</h2>
-    <p>${state}<p>
-    <button @click=${() => setState(state + 1)}>+</button>
-    <button @click=${() => setState(0)}>0</button>
-    <button @click=${() => setState(state - 1)}>-</button>
-    </div>
+        <h1>${name} - ${age}</h1>
+        <p>Internal state: ${state} - externalState: ${externalCount}</p>
+        <button @click=${() => setState(state + 1)}>+</button>
+        <button @click=${() => setState(0)}>0</button>
+        <button @click=${() => setState(state - 1)}>-</button>
     `;
 });
 
@@ -105,21 +106,21 @@ function App() {
     return html`
         <div>
             Normal Content
-            <p>${state}<p>
+            <p>${state}</p>
             <button @click=${() => setState(state + 1)}>+</button>
             <button @click=${() => setState(0)}>0</button>
             <button @click=${() => setState(state - 1)}>-</button>
         </div>
         <p>
-        It's cool, but sometimes the parent unmounts the virtual component.
-        At least it seems to work. but we need to make sure that the virtual component
-        doesn't get removed from the DOM.
+            It's cool, but sometimes the parent unmounts the virtual component.
+            At least it seems to work. but we need to make sure that the virtual component
+            doesn't get removed from the DOM.
         </p>
         <br>
-        <br>
-        <br>
-        "Virtual Component"
-        ${virtuallyRenderable("frank", 20)}
+        <div>
+            <h1>Virtual Content</h1>
+            ${virtuallyRenderable("frank", 20, state)}
+        </div>
     `;
 }
 
