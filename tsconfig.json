@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "checkJs": true,
+        "baseUrl": "./",
+        "paths": {
+            "*": [
+                ".snowpack/types/*"
+            ]
+        },
+        "lib": [
+            "DOM"
+        ],
+        "skipLibCheck": true
+    },
+    "typeAcquisition": {
+        "enable": true
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
